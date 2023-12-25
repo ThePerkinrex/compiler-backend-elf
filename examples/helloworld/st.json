@@ -1,0 +1,12 @@
+[
+	[],
+	[
+		{
+			"lexeme": "main",
+			"type": "function",
+			"args": [],
+			"ret": "int",
+			"inner_st": 0
+		}
+	]
+]

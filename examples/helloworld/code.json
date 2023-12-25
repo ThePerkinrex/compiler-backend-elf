@@ -1,0 +1,17 @@
+[
+	{
+		"type": "function",
+		"entry": {"st_idx": 0, "idx": 0},
+		"body": [
+			{
+				"type": "syscall",
+				"syscall": {"type": "int_const", "val": 64},
+				"args": [
+					{"type": "int_const", "val": 1},
+					{"type": "str_const", "val": "Hello world!"},
+					{"type": "int_const", "val": 13}
+				]
+			}
+		]
+	}
+]
