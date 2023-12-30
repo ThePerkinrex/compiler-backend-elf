@@ -1,6 +1,6 @@
 use bitflags::bitflags;
 use bytemuck::{Pod, Zeroable};
-use std::{mem::size_of, io::Write};
+use std::{io::Write, mem::size_of};
 
 const EI_NIDENT: usize = 16;
 
@@ -109,7 +109,6 @@ impl Elf64EHdr {
     pub fn new(
         entrypoint: Elf64Addr,
         ph_offset: Elf64Off,
-        sh_offset: Elf64Off,
         ph_num: u16,
     ) -> Self {
         Self {
@@ -119,7 +118,7 @@ impl Elf64EHdr {
             e_version: 1,  // CURRENT
             e_entry: entrypoint,
             e_phoff: ph_offset,
-            e_shoff: sh_offset,
+            e_shoff: 0,
             e_flags: 0,
             e_ehsize: size_of::<Self>() as u16, // Elf header size in bytes
             e_phentsize: size_of::<PhEntry>() as u16,
@@ -167,7 +166,7 @@ impl PhEntry {
         filesz: u64,
         memsz: u64,
         flags: PhFlags,
-		align: u64
+        align: u64,
     ) -> Self {
         Self {
             p_type: 1, // PT_LOAD
@@ -199,33 +198,85 @@ pub struct ShEntry {
 
 #[derive(Debug)]
 pub struct ElfFileSegment {
-	flags: PhFlags,
-	data: Vec<u8>,
-	memsz: u64,
-	vaddr: u64,
-	align: u64
+    flags: PhFlags,
+    data: Vec<u8>,
+    memsz: u64,
+    vaddr: Elf64Addr,
+    align: u64,
 }
 
 #[derive(Debug, Default)]
 pub struct ElfFileBuilder {
-	segments: Vec<ElfFileSegment>
+    segments: Vec<ElfFileSegment>,
+    entrypoint: Elf64Addr,
 }
 
 impl ElfFileBuilder {
-    pub const fn new() -> Self { Self { segments: Vec::new() } }
+    pub const fn new() -> Self {
+        Self {
+            segments: Vec::new(),
+            entrypoint: 0
+        }
+    }
 
-	pub fn add_code_segment(&mut self, code: Vec<u8>, vaddr: u64) {
-		self.segments.push(ElfFileSegment { flags: PhFlags::RX, memsz: code.len() as u64, data: code, vaddr, align: 0x1000 })
-	}
+    pub fn add_code_segment(&mut self, code: Vec<u8>, vaddr: Elf64Addr) {
+        self.segments.push(ElfFileSegment {
+            flags: PhFlags::RX,
+            memsz: code.len() as u64,
+            data: code,
+            vaddr,
+            align: 16,
+        })
+    }
 
-	pub fn add_unint_segment(&mut self, vaddr: u64, memsz: u64, align: u64) {
-		self.segments.push(ElfFileSegment { flags: PhFlags::RW, data: Vec::new(), memsz, vaddr, align })
-	}
+    pub fn add_rodata_segment(&mut self, data: Vec<u8>, vaddr: Elf64Addr, align: u64) {
+        self.segments.push(ElfFileSegment {
+            flags: PhFlags::R,
+            memsz: data.len() as u64,
+            data,
+            vaddr,
+            align,
+        })
+    }
 
-	pub fn build<W: Write>(self, buf: &mut W) {
-		
-	}
+    pub fn add_data_segment(&mut self, data: Vec<u8>, vaddr: Elf64Addr, align: u64) {
+        self.segments.push(ElfFileSegment {
+            flags: PhFlags::RW,
+            memsz: data.len() as u64,
+            data,
+            vaddr,
+            align,
+        })
+    }
+
+    pub fn add_unint_segment(&mut self, vaddr: Elf64Addr, memsz: u64, align: u64) {
+        self.segments.push(ElfFileSegment {
+            flags: PhFlags::RW,
+            data: Vec::new(),
+            memsz,
+            vaddr,
+            align,
+        })
+    }
+
+    pub fn set_entrypoint(&mut self, entrypoint: Elf64Addr) {
+        self.entrypoint = entrypoint;
+    }
+
+    pub fn build<W: Write>(self, buf: &mut W) -> Result<(), std::io::Error> {
+        let mut p_off = size_of::<Elf64EHdr>() as Elf64Off;
+        let header = Elf64EHdr::new(self.entrypoint, p_off, self.segments.len() as u16);
+        buf.write_all(bytemuck::bytes_of(&header))?;
+        p_off += (size_of::<PhEntry>() * self.segments.len()) as Elf64Off;
+        for (i, segment) in self.segments.iter().enumerate() {
+            let filesz = segment.data.len() as u64;
+            let ph_entry = PhEntry::new(p_off, segment.vaddr, filesz, segment.memsz, segment.flags, segment.align);
+            buf.write_all(bytemuck::bytes_of(&ph_entry))?;
+            p_off += segment.data.len() as Elf64Off;
+        }
+        for segment in self.segments.into_iter() {
+            buf.write_all(&segment.data)?;
+        }
+        Ok(())
+    }
 }
-
-
-
