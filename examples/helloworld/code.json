@@ -11,6 +11,13 @@
 					{"type": "str_const", "val": "Hello world!"},
 					{"type": "int_const", "val": 13}
 				]
+			},
+			{
+				"type": "syscall",
+				"syscall": {"type": "int_const", "val": 60},
+				"args": [
+					{"type": "int_const", "val": 0}
+				]
 			}
 		]
 	}

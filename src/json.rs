@@ -1,4 +1,4 @@
-use crate::data::{St, StEntry};
+use crate::{data::{St, StEntry}, codegen::generic::Codegen};
 
 pub type JsonSt = Vec<Vec<StEntry>>;
 
@@ -43,4 +43,19 @@ pub enum Statement {
 pub enum Expression {
     IntConst { val: u64 },
     StrConst { val: String },
+}
+
+
+pub fn run<S: St<StEntryId = StEntryRef>, C: Codegen<S>>(code: Code, mut codegen: C) {
+    for item in code {
+        match item {
+            Item::Function { entry, body } => {
+                codegen.enter_fn(entry);
+                for statement in body {
+                    codegen.gen_statement(statement);
+                }
+                codegen.exit_fn()
+            },
+        }
+    }
 }

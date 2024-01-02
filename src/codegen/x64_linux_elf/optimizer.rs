@@ -1,15 +1,23 @@
-use crate::data::St;
-
 use super::ir::Instr;
 
-pub struct Optimizer {}
+pub struct CodeLabel(usize);
+
+pub struct Optimizer {
+	labels: Vec<u64>
+}
 
 impl Optimizer {
 	pub const fn new() -> Self {
-		Self {}
+		Self {labels: Vec::new()}
+	}
+
+	pub fn label(&mut self) -> CodeLabel {
+		let label = CodeLabel(self.labels.len());
+		self.labels.push(0 /* TODO current address */);
+		label
 	}
 
 	pub fn accept(&mut self, instr: Instr) {
-		dbg!(instr);
+		println!("\t{instr:?}");
 	}
 }
