@@ -1,8 +1,11 @@
 use std::{fs::File, io::Write};
 
-use codegen::x64_linux_elf::{elf::{Elf64EHdr, ElfFileBuilder}, ir_gen::X64LinuxElfCodegen};
+use codegen::x64_linux_elf::{
+    elf::{Elf64EHdr, ElfFileBuilder},
+    ir_gen::X64LinuxElfCodegen,
+};
 // use codegen::{LiteralAllocator, RegAllocator, codegen_body, codegen_code};
-use json::{Code, JsonSt, run};
+use json::{run, Code, JsonSt};
 
 mod codegen;
 mod data;
@@ -17,8 +20,8 @@ fn main() {
     // let mut lit = LiteralAllocator::new(0);
     // let mut regs = RegAllocator::new();
     // codegen_code(&code, &st, &mut lit, &mut regs);
-    let mut elf_hdr = ElfFileBuilder::new();
-    elf_hdr.add_data_segment(b"hola mundo!\0".to_vec(), 0, 4);
-    let mut f = File::create("res.elf").unwrap();
-    elf_hdr.build(&mut f).unwrap();
+    // let mut elf_hdr = ElfFileBuilder::new();
+    // elf_hdr.add_data_segment(b"hola mundo!\0".to_vec(), 0, 4);
+    // let mut f = File::create("res.elf").unwrap();
+    // elf_hdr.build(&mut f).unwrap();
 }

@@ -1,6 +1,5 @@
 use self::syscall::REG_REPRESENTATIONS;
 
-
 pub mod syscall;
 
 type InternalRegister = u8;
@@ -10,7 +9,7 @@ type InternalRegister = u8;
 pub struct RegAllocation(InternalRegister);
 #[repr(transparent)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub struct Register(InternalRegister);
+pub struct Register(pub InternalRegister);
 
 impl RegAllocation {
     pub const fn repr(&self) -> &'static str {
@@ -63,11 +62,13 @@ impl PartialEq<RegAllocation> for Register {
 }
 
 pub struct RegisterAllocator {
-	available: u16
+    available: u16,
 }
 impl RegisterAllocator {
     pub const fn new() -> Self {
-        Self {available: u16::MAX}
+        Self {
+            available: u16::MAX,
+        }
     }
 
     pub fn free(&mut self, reg: RegAllocation) {
@@ -97,15 +98,15 @@ impl RegisterAllocator {
 }
 
 #[derive(Debug)]
-pub enum Constant {
+pub enum Constant<Lbl> {
     Value(u64),
-    DataAddr(u64)
+    Tbd(Lbl),
 }
 
 #[derive(Debug)]
-pub enum Instr {
-    SetConstant(Register, Constant),
-    MoveRegs{dest: Register, orig: Register},
+pub enum Instr<Lbl> {
+    SetConstant(Register, Constant<Lbl>),
+    MoveRegs { dest: Register, orig: Register },
     FreeRegister(Register),
     Syscall,
 }

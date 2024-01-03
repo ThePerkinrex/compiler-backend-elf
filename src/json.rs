@@ -1,8 +1,11 @@
-use crate::{data::{St, StEntry}, codegen::generic::Codegen};
+use crate::{
+    codegen::generic::Codegen,
+    data::{St, StEntry},
+};
 
 pub type JsonSt = Vec<Vec<StEntry>>;
 
-#[derive(Debug, serde::Deserialize, Clone, Copy)]
+#[derive(Debug, serde::Deserialize, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StEntryRef {
     pub st_idx: usize,
     pub idx: usize,
@@ -45,7 +48,6 @@ pub enum Expression {
     StrConst { val: String },
 }
 
-
 pub fn run<S: St<StEntryId = StEntryRef>, C: Codegen<S>>(code: Code, mut codegen: C) {
     for item in code {
         match item {
@@ -55,7 +57,8 @@ pub fn run<S: St<StEntryId = StEntryRef>, C: Codegen<S>>(code: Code, mut codegen
                     codegen.gen_statement(statement);
                 }
                 codegen.exit_fn()
-            },
+            }
         }
     }
+    codegen.finish();
 }

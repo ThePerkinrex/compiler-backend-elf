@@ -1,6 +1,8 @@
 use bitflags::bitflags;
 use bytemuck::{Pod, Zeroable};
-use std::{io::Write, mem::size_of};
+use std::{io::{Write, Seek}, mem::size_of};
+
+use super::ir_gen::PAGE_SIZE;
 
 const EI_NIDENT: usize = 16;
 
@@ -106,11 +108,7 @@ pub struct Elf64EHdr {
 }
 
 impl Elf64EHdr {
-    pub fn new(
-        entrypoint: Elf64Addr,
-        ph_offset: Elf64Off,
-        ph_num: u16,
-    ) -> Self {
+    pub fn new(entrypoint: Elf64Addr, ph_offset: Elf64Off, ph_num: u16) -> Self {
         Self {
             e_ident: Elf64Ident::new(),
             e_type: 2,     // EXEC
@@ -179,6 +177,26 @@ impl PhEntry {
             p_align: align, // Page size
         }
     }
+
+    pub const fn interp(
+        offset: Elf64Off,
+        vaddr: Elf64Addr,
+        filesz: u64,
+        memsz: u64,
+        flags: PhFlags,
+        align: u64,
+    ) -> Self {
+        Self {
+            p_type: 3, // PT_INTERP
+            p_flags: flags.bits(),
+            p_offset: offset,
+            p_vaddr: vaddr,
+            p_paddr: 0,
+            p_filesz: filesz,
+            p_memsz: memsz,
+            p_align: align, // Page size
+        }
+    }
 }
 
 #[derive(Debug, Pod, Zeroable, Clone, Copy)]
@@ -215,7 +233,7 @@ impl ElfFileBuilder {
     pub const fn new() -> Self {
         Self {
             segments: Vec::new(),
-            entrypoint: 0
+            entrypoint: 0,
         }
     }
 
@@ -225,7 +243,7 @@ impl ElfFileBuilder {
             memsz: code.len() as u64,
             data: code,
             vaddr,
-            align: 16,
+            align: 0x1000,
         })
     }
 
@@ -263,18 +281,37 @@ impl ElfFileBuilder {
         self.entrypoint = entrypoint;
     }
 
-    pub fn build<W: Write>(self, buf: &mut W) -> Result<(), std::io::Error> {
+    pub fn build<W: Write + Seek>(mut self, buf: &mut W) -> Result<(), std::io::Error> {
+        // let loader = b"/lib64/ld-linux-x86-64.so.2\0";
+        // self.segments.insert(0, ElfFileSegment { flags: PhFlags::R, data: loader.to_vec(), memsz: loader.len() as u64, vaddr: 0, align: 1 });
         let mut p_off = size_of::<Elf64EHdr>() as Elf64Off;
         let header = Elf64EHdr::new(self.entrypoint, p_off, self.segments.len() as u16);
         buf.write_all(bytemuck::bytes_of(&header))?;
         p_off += (size_of::<PhEntry>() * self.segments.len()) as Elf64Off;
+        let mut paddings = Vec::with_capacity(self.segments.len());
         for (i, segment) in self.segments.iter().enumerate() {
+            // let constructor = if i == 0 {PhEntry::interp} else {PhEntry::new};
+            if p_off % PAGE_SIZE != segment.vaddr % PAGE_SIZE {
+                let padding = PAGE_SIZE + segment.vaddr % PAGE_SIZE - p_off % PAGE_SIZE;
+                paddings.push(padding);
+                p_off += padding
+            }else{
+                paddings.push(0);
+            }
             let filesz = segment.data.len() as u64;
-            let ph_entry = PhEntry::new(p_off, segment.vaddr, filesz, segment.memsz, segment.flags, segment.align);
+            let ph_entry = PhEntry::new(
+                p_off,
+                segment.vaddr,
+                filesz,
+                segment.memsz,
+                segment.flags,
+                segment.align,
+            );
             buf.write_all(bytemuck::bytes_of(&ph_entry))?;
             p_off += segment.data.len() as Elf64Off;
         }
-        for segment in self.segments.into_iter() {
+        for (segment, padding) in self.segments.into_iter().zip(paddings.into_iter()) {
+            buf.seek(std::io::SeekFrom::Current(padding as i64)).unwrap();
             buf.write_all(&segment.data)?;
         }
         Ok(())

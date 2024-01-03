@@ -5,11 +5,11 @@
 		"body": [
 			{
 				"type": "syscall",
-				"syscall": {"type": "int_const", "val": 64},
+				"syscall": {"type": "int_const", "val": 1},
 				"args": [
 					{"type": "int_const", "val": 1},
-					{"type": "str_const", "val": "Hello world!"},
-					{"type": "int_const", "val": 13}
+					{"type": "str_const", "val": "Hello world!\n"},
+					{"type": "int_const", "val": 14}
 				]
 			},
 			{
