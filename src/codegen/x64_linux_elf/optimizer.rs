@@ -26,7 +26,6 @@ impl<LblId: Eq + Hash + Debug> Optimizer<LblId> {
     }
 
     pub fn accept(&mut self, instr: Instr<LblId>) {
-        println!("\t{instr:?}");
 		match instr {
 				Instr::SetConstant(dest, c) => {
 					let val = match c {

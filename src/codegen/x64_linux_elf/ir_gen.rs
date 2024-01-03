@@ -83,11 +83,9 @@ impl<SE: PartialEq + Eq + Hash + Clone + Copy + Debug, S: St<StEntryId = SE>> Co
         if entry.lexeme == "main" {
             self.main = Some(label);
         }
-        println!("Enter fn: {}", entry.lexeme)
     }
 
     fn exit_fn(&mut self) {
-        println!("Exit fn")
     }
 
     fn gen_statement(&mut self, statement: Statement) {
