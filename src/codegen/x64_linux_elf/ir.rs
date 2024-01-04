@@ -1,3 +1,5 @@
+use bitflags::bitflags;
+
 use self::syscall::REG_REPRESENTATIONS;
 
 pub mod syscall;
@@ -23,7 +25,7 @@ impl RegAllocation {
 
 #[repr(transparent)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub struct RegisterRequest(InternalRegister);
+pub struct RegisterRequest(pub InternalRegister);
 
 impl PartialEq<RegisterRequest> for RegAllocation {
     fn eq(&self, other: &RegisterRequest) -> bool {
@@ -61,26 +63,51 @@ impl PartialEq<RegAllocation> for Register {
     }
 }
 
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    struct RegisterAllocatorInternal: u16 {
+        const rax = 1 << 0;
+        const rcx = 1 << 1;
+        const rdx = 1 << 2;
+        const rbx = 1 << 3;
+        const rsp = 1 << 4;
+        const rbp = 1 << 5;
+        const rsi = 1 << 6;
+        const rdi = 1 << 7;
+        const r8  = 1 << 8;
+        const r9  = 1 << 9;
+        const r10 = 1 << 10;
+        const r11 = 1 << 11;
+        const r12 = 1 << 12;
+        const r13 = 1 << 13;
+        const r14 = 1 << 14;
+        const r15 = 1 << 15;
+    }
+}
+
 pub struct RegisterAllocator {
-    available: u16,
+    available: RegisterAllocatorInternal,
 }
 impl RegisterAllocator {
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
-            available: u16::MAX,
+            available: !(RegisterAllocatorInternal::rsp | RegisterAllocatorInternal::rbp),
         }
     }
 
     pub fn free(&mut self, reg: RegAllocation) {
-        self.available ^= 1 << reg.0;
+        self.available ^= RegisterAllocatorInternal::from_bits_truncate(1 << reg.0);
     }
 
     pub fn allocate_any(&mut self) -> RegAllocation {
         let mut mask = 1;
         for i in 0..16u8 {
-            if self.available & mask != 0 {
-                self.available ^= mask;
-                return RegAllocation(i);
+            {
+                let mask = RegisterAllocatorInternal::from_bits_truncate(mask);
+                if !((self.available & mask).is_empty()) {
+                    self.available ^= mask;
+                    return RegAllocation(i);
+                }
             }
             mask <<= 1;
         }
@@ -88,12 +115,16 @@ impl RegisterAllocator {
     }
 
     pub fn allocate(&mut self, req: RegisterRequest) -> RegAllocation {
-        let mask = 1 << req.0;
-        if self.available & mask != 0 {
+        // println!("Requesting register {} ({})", req.0, REG_REPRESENTATIONS[req.0 as usize]);
+        let mask = RegisterAllocatorInternal::from_bits_truncate(1 << req.0);
+        if !((self.available & mask).is_empty()) {
             self.available ^= mask;
             return RegAllocation(req.0);
         }
-        panic!("No registers available")
+        panic!(
+            "Register {} ({}) isn't available",
+            req.0, REG_REPRESENTATIONS[req.0 as usize]
+        )
     }
 }
 
@@ -107,6 +138,10 @@ pub enum Constant<Lbl> {
 pub enum Instr<Lbl> {
     SetConstant(Register, Constant<Lbl>),
     MoveRegs { dest: Register, orig: Register },
+    Push(Register),
+    Pop(Register),
     FreeRegister(Register),
     Syscall,
+    Ret,
+    Call(Lbl)
 }

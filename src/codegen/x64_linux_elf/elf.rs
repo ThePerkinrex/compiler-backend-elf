@@ -1,6 +1,9 @@
 use bitflags::bitflags;
 use bytemuck::{Pod, Zeroable};
-use std::{io::{Write, Seek}, mem::size_of};
+use std::{
+    io::{Seek, Write},
+    mem::size_of,
+};
 
 use super::ir_gen::PAGE_SIZE;
 
@@ -295,7 +298,7 @@ impl ElfFileBuilder {
                 let padding = PAGE_SIZE + segment.vaddr % PAGE_SIZE - p_off % PAGE_SIZE;
                 paddings.push(padding);
                 p_off += padding
-            }else{
+            } else {
                 paddings.push(0);
             }
             let filesz = segment.data.len() as u64;
@@ -311,7 +314,8 @@ impl ElfFileBuilder {
             p_off += segment.data.len() as Elf64Off;
         }
         for (segment, padding) in self.segments.into_iter().zip(paddings.into_iter()) {
-            buf.seek(std::io::SeekFrom::Current(padding as i64)).unwrap();
+            buf.seek(std::io::SeekFrom::Current(padding as i64))
+                .unwrap();
             buf.write_all(&segment.data)?;
         }
         Ok(())

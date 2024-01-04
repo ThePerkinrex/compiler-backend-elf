@@ -38,6 +38,9 @@ pub enum Statement {
         syscall: Expression,
         args: Vec<Expression>,
     },
+    Return {
+        inner: Option<Expression>,
+    },
 }
 
 #[derive(Debug, serde::Deserialize)]

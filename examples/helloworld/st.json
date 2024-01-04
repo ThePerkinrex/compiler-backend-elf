@@ -1,5 +1,9 @@
 [
 	[
+	
+	],
+	[],
+	[
 		{
 			"lexeme": "main",
 			"type": "function",
@@ -7,6 +11,5 @@
 			"ret": "int",
 			"inner_st": 0
 		}
-	],
-	[]
+	]
 ]

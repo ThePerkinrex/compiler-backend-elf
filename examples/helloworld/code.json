@@ -1,7 +1,7 @@
 [
 	{
 		"type": "function",
-		"entry": {"st_idx": 0, "idx": 0},
+		"entry": {"st_idx": 2, "idx": 0},
 		"body": [
 			{
 				"type": "syscall",
@@ -13,11 +13,8 @@
 				]
 			},
 			{
-				"type": "syscall",
-				"syscall": {"type": "int_const", "val": 60},
-				"args": [
-					{"type": "int_const", "val": 0}
-				]
+				"type": "return",
+				"inner": {"type": "int_const", "val": 0}
 			}
 		]
 	}
